@@ -1,18 +1,14 @@
 <html>
   <head>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Ferronatto - Home</title>
   </head>
-  <body style="background-color: aqua;">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-12">
-          <h1>Testando</h1>
-          <p>Eae seu bosta</p>
-        </div>
-      </div>
-    </div>
+  <body>
+    <form style="display: inline;" autocomplete="off"><input type="text" id="nome"/></form>
+    <button onclick="nomeSubmetido()">Enviar</button>
+    <div id="lista"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/6.2.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/6.2.0/firebase-firestore.js"></script>
+    <script src="./scripts/script.js"></script>
   </body>
 </html>
