@@ -7,6 +7,8 @@ function main() {
 
   let response = document.getElementById('response');
 
+  response.innerHTML = `{<br/>`;
   for (const [key, value] of urlParams)
-    response.innerHTML += `${key} -> ${value}<br>`;
+    response.innerHTML += `&nbsp&nbsp${key}: '${value}'<br/>`;
+  response.innerHTML += `}`;
 }
