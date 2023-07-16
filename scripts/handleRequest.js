@@ -7,8 +7,8 @@ function main() {
 
   let response = document.getElementById('response');
 
-  response.innerHTML = `{<br/>`;
+  response.innerHTML = `BEGIN_RESPONSE{`;
   for (const [key, value] of urlParams)
-    response.innerHTML += `&nbsp&nbsp${key}: '${value}'<br/>`;
-  response.innerHTML += `}`;
+    response.innerHTML += `${key}: '${value}',`;
+  response.innerHTML += `}END_RESPONSE`;
 }
