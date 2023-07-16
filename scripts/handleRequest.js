@@ -11,4 +11,5 @@ function main() {
   for (const [key, value] of urlParams)
     response.innerHTML += `${key}: '${value}',`;
   response.innerHTML += `}END_RESPONSE`;
+
 }
