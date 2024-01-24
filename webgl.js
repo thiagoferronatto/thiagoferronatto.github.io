@@ -4,6 +4,7 @@ main();
 
 async function main() {
   const canvas = document.querySelector('#glcanvas');
+
   const gl = canvas.getContext('webgl2');
 
   if (gl === null) {
@@ -11,23 +12,41 @@ async function main() {
     return;
   }
 
+  function setCanvasSize() {
+    var minDimension = Math.min(window.innerWidth, window.innerHeight);
+    canvas.width = 0.8 * minDimension;
+    canvas.height = 0.8 * minDimension;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  setCanvasSize();
+  window.addEventListener('resize', setCanvasSize);
+
   const vsSrc = `#version 300 es
 
     layout (location = 0) in vec3 position;
     layout (location = 1) in vec3 normal;
+    layout (location = 2) in float shade;
 
     uniform float t;
 
     out vec3 vertexPosition;
     out vec3 vertexNormal;
+    flat out float shadeVertex;
 
     void main(void) {
-      const float s = 0.5;
-      mat3 yRotationMatrix = mat3( cos(s * t), 0, sin(s * t),
-                                        0,     1,     0,
-                                  -sin(s * t), 0, cos(s * t));
-      vertexPosition = yRotationMatrix * position;
-      vertexNormal = yRotationMatrix * normalize(normal);
+      if (shade == 1.0) {
+        const float s = 0.5;
+        mat3 yRotationMatrix = mat3( cos(s * t), 0, sin(s * t),
+                                          0,     1,     0,
+                                    -sin(s * t), 0, cos(s * t));
+        vertexPosition = yRotationMatrix * position;
+        vertexNormal = yRotationMatrix * normalize(normal);
+      } else {
+        vertexPosition = position;
+        vertexNormal = normalize(normal);
+      }
+      shadeVertex = shade;
       gl_Position = vec4(vertexPosition, 1);
     }
   `;
@@ -37,27 +56,33 @@ async function main() {
 
   const fsSrc = `#version 300 es
 
-    precision highp float;
+    precision mediump float;
 
     in vec3 vertexPosition;
     in vec3 vertexNormal;
+    flat in float shadeVertex;
 
     out vec4 fragColor;
 
     void main(void) {
-      const vec3 lightPos = vec3(1, 3, -1);
-      vec3 l = lightPos - vertexPosition;
-      float invd = 1.0 / length(l);
-      l *= invd;
-      vec3 n = normalize(vertexNormal);
-      float d = 0.5 + 0.5 * dot(l, n);
-      vec3 diffuse = vec3(d * d);
-      vec3 v = normalize(vec3(0, 0, -1) - vertexPosition);
-      vec3 r = normalize(2.0 * dot(n, l) * n - l);
-      vec3 specular = vec3(pow(max(dot(v, r), 0.0), 1000.0));
-      const float intensity = 7.0;
-      vec3 color = intensity * invd * invd * (diffuse + specular);
-      fragColor = vec4(color, 1);
+      if (shadeVertex == 1.0) {
+        const vec3 lightPos = vec3(1, 3, -1);
+        vec3 l = lightPos - vertexPosition;
+        float invd = 1.0 / length(l);
+        l *= invd;
+        vec3 n = normalize(vertexNormal);
+        float d = 0.5 + 0.5 * dot(l, n);
+        vec3 diffuse = vec3(d * d);
+        vec3 v = normalize(vec3(0, 0, -1) - vertexPosition);
+        vec3 r = normalize(2.0 * dot(n, l) * n - l);
+        vec3 specular = vec3(pow(max(dot(v, r), 0.0), 100.0));
+        const float intensity = 7.0;
+        vec3 color = intensity * invd * invd * (diffuse + specular);
+        fragColor = vec4(color, 1);
+      } else {
+        vec3 color = vec3(0.075 / distance(vertexPosition, vec3(0, 0, 1)));
+        fragColor = vec4(color, 1);
+      }
     }
   `;
   const fs = gl.createShader(gl.FRAGMENT_SHADER);
@@ -69,9 +94,8 @@ async function main() {
   gl.attachShader(program, fs);
 
   const posVbo = gl.createBuffer();
-  const vertPosBuf = new ArrayBuffer(8 * 9 * Float32Array.BYTES_PER_ELEMENT);
+  const vertPosBuf = new ArrayBuffer(10 * 9 * Float32Array.BYTES_PER_ELEMENT);
   const vertPosArray = new Float32Array(vertPosBuf);
-  const r = 0.75;
   vertPosArray.set([
     0, 0, 0.5,
     0.5, 0, 0,
@@ -103,13 +127,22 @@ async function main() {
 
     0, -0.5, 0,
     0, 0, 0.5,
-    -0.5, 0, 0
+    -0.5, 0, 0,
+
+    // background quad
+    -1, -1, 0.9,
+    1, -1, 0.9,
+    1, 1, 0.9,
+
+    -1, -1, 0.9,
+    1, 1, 0.9,
+    -1, 1, 0.9
   ]);
   gl.bindBuffer(gl.ARRAY_BUFFER, posVbo);
   gl.bufferData(gl.ARRAY_BUFFER, vertPosArray, gl.STATIC_DRAW, 0);
 
   const normalVbo = gl.createBuffer();
-  const vertNormalBuf = new ArrayBuffer(8 * 9 * Float32Array.BYTES_PER_ELEMENT);
+  const vertNormalBuf = new ArrayBuffer(10 * 9 * Float32Array.BYTES_PER_ELEMENT);
   const vertNormalArray = new Float32Array(vertNormalBuf);
   vertNormalArray.set([
     1, 1, 1,
@@ -143,9 +176,37 @@ async function main() {
     -1, -1, 1,
     -1, -1, 1,
     -1, -1, 1,
+
+    // background quad
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1,
+
+    0, 0, 1,
+    0, 0, 1,
+    0, 0, 1
   ]);
   gl.bindBuffer(gl.ARRAY_BUFFER, normalVbo);
   gl.bufferData(gl.ARRAY_BUFFER, vertNormalArray, gl.STATIC_DRAW, 0);
+
+  const shadeVbo = gl.createBuffer();
+  const shadeBuf = new ArrayBuffer(10 * 3 * Float32Array.BYTES_PER_ELEMENT);
+  const shadeArray = new Float32Array(shadeBuf);
+  shadeArray.set([
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+    1, 1, 1,
+
+    // background quad
+    0, 0, 0,
+    0, 0, 0]);
+  gl.bindBuffer(gl.ARRAY_BUFFER, shadeVbo);
+  gl.bufferData(gl.ARRAY_BUFFER, shadeArray, gl.STATIC_DRAW, 0);
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -155,23 +216,26 @@ async function main() {
   gl.bindBuffer(gl.ARRAY_BUFFER, normalVbo);
   gl.enableVertexAttribArray(1);
   gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, shadeVbo);
+  gl.enableVertexAttribArray(2);
+  gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
 
-  const varyings = ['vertexPosition'];
-  gl.transformFeedbackVaryings(program, varyings, gl.INTERLEAVED_ATTRIBS);
+  // const varyings = ['vertexPosition'];
+  // gl.transformFeedbackVaryings(program, varyings, gl.INTERLEAVED_ATTRIBS);
 
-  let tbo = gl.createBuffer();
-  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, tbo);
-  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, vertPosArray.length * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_READ);
-  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, tbo);
+  // let tbo = gl.createBuffer();
+  // gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, tbo);
+  // gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, vertPosArray.length * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_READ);
+  // gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, tbo);
 
   gl.linkProgram(program);
   gl.useProgram(program);
 
-  gl.clearColor(0.1, 0.1, 0.1, 1);
+  gl.clearColor(1, 0, 0, 1);
 
   const tLoc = gl.getUniformLocation(program, 't');
 
-  const txt = document.querySelector('#txt');
+  // const txt = document.querySelector('#txt');
 
   gl.enable(gl.DEPTH_TEST);
 
@@ -181,17 +245,17 @@ async function main() {
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.beginTransformFeedback(gl.TRIANGLES);
+    // gl.beginTransformFeedback(gl.TRIANGLES);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 8 * 3);
+    gl.drawArrays(gl.TRIANGLES, 0, 30);
 
-    gl.endTransformFeedback();
+    // gl.endTransformFeedback();
 
-    gl.flush();
+    // gl.flush();
 
-    let asdf = new ArrayBuffer(8 * 9 * Float32Array.BYTES_PER_ELEMENT);
-    let tfBuf = new Float32Array(asdf);
-    gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, tfBuf);
+    // let asdf = new ArrayBuffer(10 * 9 * Float32Array.BYTES_PER_ELEMENT);
+    // let tfBuf = new Float32Array(asdf);
+    // gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, tfBuf);
 
     // txt.innerHTML = '';
     // for (let i = 0; i < 8 * 3; ++i) {
