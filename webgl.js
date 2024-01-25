@@ -33,19 +33,14 @@ function main() {
     layout (location = 1) in vec3 normal;
 
     uniform float done;
-    uniform float t;
+    uniform mat3 rotationMatrix;
 
     out vec3 vertexPosition;
     out vec3 vertexNormal;
 
     void main(void) {
-      const float s = 0.5;
-      float st = s * t, cosst = cos(st), sinst = sin(st);
-      mat3 yRotationMatrix = mat3( cosst, 0, sinst,
-                                     0,   1,   0,
-                                  -sinst, 0, cosst);
-      vertexPosition = yRotationMatrix * position;
-      vertexNormal = yRotationMatrix * normalize(normal);
+      vertexPosition = rotationMatrix * position;
+      vertexNormal = rotationMatrix * normalize(normal);
       if (done == 1.0)
         vertexPosition += 0.1 * vertexNormal;
       gl_Position = vec4(vertexPosition, 1);
@@ -184,7 +179,7 @@ function main() {
 
   gl.clearColor(0, 0, 0, 1);
 
-  const tLoc = gl.getUniformLocation(program, 't');
+  const rotationLoc = gl.getUniformLocation(program, 'rotationMatrix');
   const doneLoc = gl.getUniformLocation(program, 'done');
   const ambientLoc = gl.getUniformLocation(program, 'ambient');
 
@@ -204,7 +199,13 @@ function main() {
   canvas.addEventListener('pointerup', _ => { acceleration = 0; });
 
   function loop() {
-    gl.uniform1f(tLoc, t);
+    const s = 0.5, st = s * t, cosst = Math.cos(st), sinst = Math.sin(st);
+    const rotation = new Matrix3(
+      cosst, 0, sinst,
+      0, 1, 0,
+      -sinst, 0, cosst
+    );
+    gl.uniformMatrix3fv(rotationLoc, false, rotation.data);
     gl.uniform1f(doneLoc, done);
     gl.uniform3f(ambientLoc, ambient[0], ambient[1], ambient[2]);
 
