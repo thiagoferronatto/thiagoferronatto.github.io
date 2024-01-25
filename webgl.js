@@ -1,9 +1,5 @@
 main();
 
-function prepareMesh(mesh) {
-
-}
-
 function main() {
   const canvas = document.querySelector('#glcanvas');
   const txt = document.querySelector('#txt');
