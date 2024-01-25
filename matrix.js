@@ -25,3 +25,19 @@ class Matrix4 {
     this.data[10] *= z;
   }
 }
+
+class Matrix3 {
+  constructor(...elements) {
+    let tmpBufHandle = new ArrayBuffer(9 * Float32Array.BYTES_PER_ELEMENT);
+    this.data = new Float32Array(tmpBufHandle);
+    this.data.set(elements);
+  }
+
+  at(i, j) {
+    return this.data[i * 3 + j];
+  }
+
+  set(i, j, value) {
+    this.data[i * 3 + j] = value;
+  }
+}
