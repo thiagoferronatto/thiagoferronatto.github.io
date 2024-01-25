@@ -217,7 +217,7 @@ function main() {
 
     if (done === 0) {
       ambient = [Math.pow(speed / 0.23, 4), 0, 0];
-      if (speed > 0.23) {
+      if (speed > 0.2) {
         done = 1;
         ambient = [1, 1, 1];
         txt.textContent = 'interesting.';
