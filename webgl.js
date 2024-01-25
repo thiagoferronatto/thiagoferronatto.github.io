@@ -1,5 +1,9 @@
 main();
 
+function prepareMesh(mesh) {
+
+}
+
 function main() {
   const canvas = document.querySelector('#glcanvas');
   const txt = document.querySelector('#txt');
@@ -23,6 +27,8 @@ function main() {
 
   const vsSrc = `#version 300 es
 
+    precision mediump float;
+
     layout (location = 0) in vec3 position;
     layout (location = 1) in vec3 normal;
 
@@ -34,15 +40,15 @@ function main() {
 
     void main(void) {
       const float s = 0.5;
-      mat3 yRotationMatrix = mat3( cos(s * t), 0, sin(s * t),
-                                        0,     1,     0,
-                                  -sin(s * t), 0, cos(s * t));
+      float st = s * t, cosst = cos(st), sinst = sin(st);
+      mat3 yRotationMatrix = mat3( cosst, 0, sinst,
+                                     0,   1,   0,
+                                  -sinst, 0, cosst);
       vertexPosition = yRotationMatrix * position;
       vertexNormal = yRotationMatrix * normalize(normal);
-      if (done == 0.0)
-        gl_Position = vec4(vertexPosition, 1);
-      else
-        gl_Position = vec4(vertexPosition + 0.1 * vertexNormal, 1);
+      if (done == 1.0)
+        vertexPosition += 0.1 * vertexNormal;
+      gl_Position = vec4(vertexPosition, 1);
     }
   `;
   const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -51,9 +57,10 @@ function main() {
 
   const fsSrc = `#version 300 es
 
-    precision highp float;
+    precision mediump float;
 
     uniform float done;
+    uniform vec3 ambient;
 
     in vec3 vertexPosition;
     in vec3 vertexNormal;
@@ -70,12 +77,12 @@ function main() {
       float d = 0.5 + 0.5 * dot(l, n);
       vec3 diffuse = vec3(d * d);
       vec3 v = normalize(vec3(0, 0, -1) - vertexPosition);
-      vec3 r = normalize(2.0 * dot(n, l) * n - l);
-      vec3 specular = vec3(pow(max(dot(v, r), 0.0), 100.0));
+      vec3 h = normalize(v + l);
+      vec3 specular = vec3(pow(max(dot(n, h), 0.0), 100.0));
       const float intensity = 7.0;
-      vec3 color = intensity * invd * invd * (diffuse + specular);
       if (done == 1.0)
-        color *= vec3(1, 0, 0);
+        diffuse *= vec3(1, 0, 0);
+      vec3 color = 0.25 * ambient + intensity * invd * invd * (diffuse + specular);
       fragColor = vec4(color, 1);
     }
   `;
@@ -179,6 +186,7 @@ function main() {
 
   const tLoc = gl.getUniformLocation(program, 't');
   const doneLoc = gl.getUniformLocation(program, 'done');
+  const ambientLoc = gl.getUniformLocation(program, 'ambient');
 
   gl.enable(gl.DEPTH_TEST);
 
@@ -186,6 +194,7 @@ function main() {
   let done = 0;
   let speed = 0;
   let acceleration = 0.0;
+  let ambient = [];
 
   canvas.addEventListener('pointerdown', _ => {
     acceleration = 0.0005;
@@ -197,27 +206,26 @@ function main() {
   function loop() {
     gl.uniform1f(tLoc, t);
     gl.uniform1f(doneLoc, done);
+    gl.uniform3f(ambientLoc, ambient[0], ambient[1], ambient[2]);
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.drawElements(gl.TRIANGLES, mesh.triangles().length, gl.UNSIGNED_INT, 0);
 
     t = t > 2 * Math.PI ? t - 2 * Math.PI : t + speed;
-    speed += acceleration;
-
-    speed *= 0.998;
-    speed = Math.max(speed, 0.01);
+    speed = 0.998 * (speed + acceleration);
 
     if (done === 0) {
-      gl.clearColor(Math.pow(speed / 0.25, 4), 0, 0, 1);
-      if (speed > 0.245) {
+      ambient = [Math.pow(speed / 0.23, 4), 0, 0];
+      if (speed > 0.23) {
         done = 1;
-        gl.clearColor(1, 1, 1, 1);
+        ambient = [1, 1, 1];
         txt.textContent = 'interesting.';
       }
     } else {
-      gl.clearColor(0, 0, 0, 1);
+      ambient = [0, 0, 0];
     }
+    gl.clearColor(ambient[0], ambient[1], ambient[2], 1);
 
     window.requestAnimationFrame(loop);
   };
