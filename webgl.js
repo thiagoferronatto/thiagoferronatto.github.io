@@ -194,6 +194,8 @@ function main() {
   });
   canvas.addEventListener('pointerup', _ => { acceleration = 0; });
 
+  let redirected = false;
+
   function loop() {
     const s = 0.5, st = s * t, cosst = Math.cos(st), sinst = Math.sin(st);
     const rotation = new Matrix3(
@@ -217,10 +219,17 @@ function main() {
       if (speed > 0.2) {
         done = 1;
         ambient = [1, 1, 1];
-        txt.textContent = 'interesting.';
+        txt.innerHTML = 'well done. <span style="color: red">entering.</span>';
       }
     } else {
       ambient = [0, 0, 0];
+      if (!redirected) {
+        document.title = 'F̸̨̝̱̋̄͌é̷̳͇̈́r̸͓͉̰͗r̷̢̮̒͐̏ớ̷̲͚n̵͚̗̬̐̔̾ă̵̛̱̱̮͝t̵̙̐̓t̴̮̻̙̅o̶̱͋͑͠s̴̛̺̕͜C̵̲̦͒̚ó̸̫̖͂̕ŗ̶̖͊́n̵̙̈̏́ê̴͔̤̳̑̐r̸̡̭͙̃̍̂';
+        let link = document.querySelector("link[rel~='icon']");
+        link.href = 'assets/images/cube_after.png';
+        setTimeout(() => { window.location.href = './main.html'; }, 2000);
+        redirected = true;
+      }
     }
     gl.clearColor(ambient[0], ambient[1], ambient[2], 1);
 
