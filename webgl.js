@@ -184,18 +184,27 @@ function main() {
   let t = 0;
   let done = 0;
   let speed = 0;
-  let acceleration = 0.0;
+  let acceleration = 0;
   let ambient = [];
+  let startingTime;
+  let elapsedTime = 0;
+  let updateTime = false;
 
   canvas.addEventListener('pointerdown', _ => {
     acceleration = 0.0005;
     if (done === 0)
       txt.textContent = 'good. keep going.';
+    startingTime = Date.now();
+    updateTime = true;
   });
-  canvas.addEventListener('pointerup', _ => { acceleration = 0; });
+
+  canvas.addEventListener('pointerup', _ => {
+    acceleration = 0;
+    elapsedTime = 0;
+    updateTime = false;
+  });
 
   let redirected = false;
-
   function loop() {
     const s = 0.5, st = s * t, cosst = Math.cos(st), sinst = Math.sin(st);
     const rotation = new Matrix3(
@@ -216,7 +225,7 @@ function main() {
 
     if (done === 0) {
       ambient = [Math.pow(speed / 0.23, 4), 0, 0];
-      if (speed > 0.2) {
+      if (speed > 0.2 || elapsedTime > 5000) {
         done = 1;
         ambient = [1, 1, 1];
         txt.innerHTML = 'well done. <span style="color: red">entering.</span>';
@@ -224,6 +233,7 @@ function main() {
     } else {
       ambient = [0, 0, 0];
       if (!redirected) {
+        console.log(`speed ${speed}, time ${elapsedTime}`);
         document.title = 'F̸̨̝̱̋̄͌é̷̳͇̈́r̸͓͉̰͗r̷̢̮̒͐̏ớ̷̲͚n̵͚̗̬̐̔̾ă̵̛̱̱̮͝t̵̙̐̓t̴̮̻̙̅o̶̱͋͑͠s̴̛̺̕͜C̵̲̦͒̚ó̸̫̖͂̕ŗ̶̖͊́n̵̙̈̏́ê̴͔̤̳̑̐r̸̡̭͙̃̍̂';
         let link = document.querySelector("link[rel~='icon']");
         link.href = 'assets/images/cube_after.png';
@@ -234,6 +244,9 @@ function main() {
     gl.clearColor(ambient[0], ambient[1], ambient[2], 1);
 
     window.requestAnimationFrame(loop);
+
+    if (updateTime)
+      elapsedTime = Date.now() - startingTime;
   };
 
   loop();
